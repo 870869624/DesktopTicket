@@ -23,6 +23,6 @@ export interface NoteElectronAPI {
 
 declare global {
   interface Window {
-    electronAPI: ElectronAPI
+    electronAPI: ElectronAPI | NoteElectronAPI
   }
 }

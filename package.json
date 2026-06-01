@@ -1,6 +1,6 @@
 {
   "name": "desktopticket",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "跨平台桌面便利贴应用",
   "main": "./out/main/index.js",
   "author": "",

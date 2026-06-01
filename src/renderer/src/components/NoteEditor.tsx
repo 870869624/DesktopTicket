@@ -71,6 +71,17 @@ const NoteEditor: React.FC<Props> = ({ note, onChange }) => {
 
       <div className={styles.row}>
         <div className={styles.field}>
+          <label className={styles.label}>标题颜色</label>
+          <ColorPicker color={note.titleColor} onChange={titleColor => update({ titleColor })} />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label}>文字颜色</label>
+          <ColorPicker color={note.textColor} onChange={textColor => update({ textColor })} />
+        </div>
+      </div>
+
+      <div className={styles.row}>
+        <div className={styles.field}>
           <label className={styles.label}>字号: {note.fontSize}px</label>
           <input
             className={styles.range}
@@ -92,42 +103,6 @@ const NoteEditor: React.FC<Props> = ({ note, onChange }) => {
             onChange={e => update({ opacity: Number(e.target.value) / 100 })}
           />
         </div>
-      </div>
-
-      <div className={styles.row}>
-        <div className={styles.field}>
-          <label className={styles.label}>宽度: {note.width}px</label>
-          <input
-            className={styles.range}
-            type="range"
-            min="120"
-            max="400"
-            value={note.width}
-            onChange={e => update({ width: Number(e.target.value) })}
-          />
-        </div>
-        <div className={styles.field}>
-          <label className={styles.label}>高度: {note.height}px</label>
-          <input
-            className={styles.range}
-            type="range"
-            min="120"
-            max="400"
-            value={note.height}
-            onChange={e => update({ height: Number(e.target.value) })}
-          />
-        </div>
-      </div>
-
-      <div className={styles.checkboxRow}>
-        <input
-          className={styles.checkbox}
-          type="checkbox"
-          id="isFixed"
-          checked={note.isFixed}
-          onChange={e => update({ isFixed: e.target.checked })}
-        />
-        <label className={styles.checkboxLabel} htmlFor="isFixed">固定位置（不可拖动）</label>
       </div>
 
       <div className={styles.checkboxRow}>

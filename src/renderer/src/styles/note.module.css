@@ -17,6 +17,7 @@
   margin-bottom: 8px;
   -webkit-app-region: drag;
   min-height: 24px;
+  gap: 6px;
 }
 
 .title {
@@ -26,6 +27,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+  -webkit-app-region: no-drag;
+}
+
+.lockIcon {
+  font-size: 12px;
+  opacity: 0.6;
+  flex-shrink: 0;
   -webkit-app-region: no-drag;
 }
 

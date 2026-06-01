@@ -108,8 +108,14 @@
   transition: background 0.2s;
 }
 
-.saveBtn:hover {
+.saveBtn:hover:not(:disabled) {
   background: #45a817;
+}
+
+.saveBtn:disabled {
+  background: #b7eb8f;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .showBtn {
@@ -123,8 +129,14 @@
   transition: background 0.2s;
 }
 
-.showBtn:hover {
+.showBtn:hover:not(:disabled) {
   background: #3a7bc8;
+}
+
+.showBtn:disabled {
+  background: #91caff;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .deleteBtn {
@@ -139,8 +151,14 @@
   margin-left: auto;
 }
 
-.deleteBtn:hover {
+.deleteBtn:hover:not(:disabled) {
   background: #e03e3e;
+}
+
+.deleteBtn:disabled {
+  background: #ffa39e;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .emptyState {

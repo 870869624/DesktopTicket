@@ -3,6 +3,8 @@ export interface StickyNote {
   title: string
   content: string
   color: string
+  textColor: string
+  titleColor: string
   fontFamily: string
   fontSize: number
   x: number

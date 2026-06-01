@@ -4,6 +4,103 @@ import { getNotes, getNote, saveNote, deleteNote } from './store'
 import type { StickyNote } from '../types'
 
 const noteWindows = new Map<string, BrowserWindow>()
+const SNAP_THRESHOLD = 12
+
+function snapToNearbyWindows(movedId: string, bounds: { x: number; y: number; width: number; height: number }): { x: number; y: number } {
+  let { x, y } = bounds
+  const { width, height } = bounds
+  let snappedX = false
+  let snappedY = false
+
+  for (const [id, win] of noteWindows) {
+    if (id === movedId || win.isDestroyed()) continue
+    const other = win.getBounds()
+
+    // 左边对齐右边
+    if (!snappedX && Math.abs(x - (other.x + other.width)) < SNAP_THRESHOLD) {
+      x = other.x + other.width
+      snappedX = true
+    }
+    // 右边对齐左边
+    if (!snappedX && Math.abs((x + width) - other.x) < SNAP_THRESHOLD) {
+      x = other.x - width
+      snappedX = true
+    }
+    // 左边对齐左边
+    if (!snappedX && Math.abs(x - other.x) < SNAP_THRESHOLD) {
+      x = other.x
+      snappedX = true
+    }
+    // 右边对齐右边
+    if (!snappedX && Math.abs((x + width) - (other.x + other.width)) < SNAP_THRESHOLD) {
+      x = other.x + other.width - width
+      snappedX = true
+    }
+
+    // 上边对齐下边
+    if (!snappedY && Math.abs(y - (other.y + other.height)) < SNAP_THRESHOLD) {
+      y = other.y + other.height
+      snappedY = true
+    }
+    // 下边对齐上边
+    if (!snappedY && Math.abs((y + height) - other.y) < SNAP_THRESHOLD) {
+      y = other.y - height
+      snappedY = true
+    }
+    // 上边对齐上边
+    if (!snappedY && Math.abs(y - other.y) < SNAP_THRESHOLD) {
+      y = other.y
+      snappedY = true
+    }
+    // 下边对齐下边
+    if (!snappedY && Math.abs((y + height) - (other.y + other.height)) < SNAP_THRESHOLD) {
+      y = other.y + other.height - height
+      snappedY = true
+    }
+
+    if (snappedX && snappedY) break
+  }
+
+  return { x, y }
+}
+
+export function closeAllNoteWindows() {
+  noteWindows.forEach((win, id) => {
+    noteWindows.delete(id)
+    win.destroy()
+  })
+}
+
+function attachMoveResizeHandlers(win: BrowserWindow, noteId: string, getMainWindow: () => BrowserWindow | null) {
+  const existingMoved = win.listeners('moved')
+  const existingResized = win.listeners('resized')
+  win.removeAllListeners('moved')
+  win.removeAllListeners('resized')
+
+  win.on('moved', () => {
+    if (win.isDestroyed()) return
+    const bounds = win.getBounds()
+    const snapped = snapToNearbyWindows(noteId, bounds)
+    if (snapped.x !== bounds.x || snapped.y !== bounds.y) {
+      win.setPosition(snapped.x, snapped.y)
+    }
+    const saved = saveNote({ id: noteId, x: snapped.x, y: snapped.y })
+    const mainWin = getMainWindow()
+    if (mainWin && !mainWin.isDestroyed()) {
+      mainWin.webContents.send('note-updated', saved)
+    }
+  })
+
+  win.on('resized', () => {
+    if (win.isDestroyed()) return
+    const bounds = win.getBounds()
+    const saved = saveNote({ id: noteId, width: bounds.width, height: bounds.height })
+    const mainWin = getMainWindow()
+    if (mainWin && !mainWin.isDestroyed()) {
+      mainWin.webContents.send('note-updated', saved)
+    }
+  })
+}
 
 export function setupIPC(getMainWindow: () => BrowserWindow | null) {
   ipcMain.handle('get-notes', () => {
@@ -17,7 +114,7 @@ export function setupIPC(getMainWindow: () => BrowserWindow | null) {
   ipcMain.handle('save-note', (_, note: Partial<StickyNote>) => {
     const saved = saveNote(note)
     if (noteWindows.has(saved.id)) {
-      updateNoteWindow(noteWindows.get(saved.id)!, saved)
+      updateNoteWindow(noteWindows.get(saved.id)!, saved, getMainWindow)
     }
     return saved
   })
@@ -29,7 +126,7 @@ export function setupIPC(getMainWindow: () => BrowserWindow | null) {
 
   ipcMain.handle('show-note-on-desktop', (_, note: StickyNote) => {
     if (noteWindows.has(note.id)) {
-      updateNoteWindow(noteWindows.get(note.id)!, note)
+      updateNoteWindow(noteWindows.get(note.id)!, note, getMainWindow)
     } else {
       createNoteWindow(note, getMainWindow)
     }
@@ -57,6 +154,7 @@ export function setupIPC(getMainWindow: () => BrowserWindow | null) {
           if (win) {
             win.webContents.send('edit-note', noteId)
             win.show()
+            win.focus()
           }
         }
       },
@@ -67,6 +165,15 @@ export function setupIPC(getMainWindow: () => BrowserWindow | null) {
           if (noteWindows.has(noteId)) {
             noteWindows.get(noteId)!.setAlwaysOnTop(updated.isPinned)
             noteWindows.get(noteId)!.webContents.send('note-data', updated)
+          }
+        }
+      },
+      {
+        label: note?.isFixed ? '解锁移动' : '锁定位置',
+        click: () => {
+          const updated = saveNote({ id: noteId, isFixed: !note?.isFixed })
+          if (noteWindows.has(noteId)) {
+            updateNoteWindow(noteWindows.get(noteId)!, updated, getMainWindow)
           }
         }
       },
@@ -94,14 +201,14 @@ export function setupIPC(getMainWindow: () => BrowserWindow | null) {
           deleteNote(noteId)
           closeNoteWindow(noteId)
           const win = getMainWindow()
-          if (win) {
+          if (win && !win.isDestroyed()) {
             win.webContents.send('note-deleted', noteId)
           }
         }
       }
     ]
     const menu = Menu.buildFromTemplate(template)
-    menu.popup(noteWin ? { window: noteWin } : undefined)
+    menu.popup(noteWin && !noteWin.isDestroyed() ? { window: noteWin } : undefined)
   })
 
   ipcMain.handle('show-all-notes', () => {
@@ -114,8 +221,8 @@ export function setupIPC(getMainWindow: () => BrowserWindow | null) {
   })
 
   ipcMain.handle('hide-all-notes', () => {
-    noteWindows.forEach(win => win.close())
-    noteWindows.clear()
+    const ids = Array.from(noteWindows.keys())
+    ids.forEach(id => closeNoteWindow(id))
   })
 }
 
@@ -140,8 +247,8 @@ function createNoteWindow(note: StickyNote, getMainWindow: () => BrowserWindow |
   const noteWindow = new BrowserWindow({
     x: posX,
     y: posY,
-    width,
-    height,
+    width: Math.max(120, width),
+    height: Math.max(120, height),
     frame: false,
     transparent: true,
     alwaysOnTop: note.isPinned !== false,
@@ -165,35 +272,32 @@ function createNoteWindow(note: StickyNote, getMainWindow: () => BrowserWindow |
     noteWindow.webContents.send('note-data', note)
   })
 
-  if (!note.isFixed) {
-    noteWindow.on('moved', () => {
-      const bounds = noteWindow.getBounds()
-      const saved = saveNote({ id: note.id, x: bounds.x, y: bounds.y })
-      const win = getMainWindow()
-      if (win) {
-        win.webContents.send('note-updated', saved)
-      }
-    })
+  noteWindow.webContents.on('will-navigate', (e) => {
+    e.preventDefault()
+  })
 
-    noteWindow.on('resized', () => {
-      const bounds = noteWindow.getBounds()
-      const saved = saveNote({ id: note.id, width: bounds.width, height: bounds.height })
-      const win = getMainWindow()
-      if (win) {
-        win.webContents.send('note-updated', saved)
-      }
-    })
-  }
+  noteWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+
+  attachMoveResizeHandlers(noteWindow, note.id, getMainWindow)
 
   noteWindows.set(note.id, noteWindow)
 }
 
-function updateNoteWindow(win: BrowserWindow, note: StickyNote) {
+function updateNoteWindow(win: BrowserWindow, note: StickyNote, getMainWindow: () => BrowserWindow | null) {
+  if (win.isDestroyed()) return
+
   win.webContents.send('note-data', note)
   win.setOpacity(note.opacity)
   win.setAlwaysOnTop(note.isPinned !== false)
+  win.setResizable(!note.isFixed)
+
   if (!note.isFixed) {
-    win.setResizable(true)
+    attachMoveResizeHandlers(win, note.id, getMainWindow)
+  }
+
+  const bounds = win.getBounds()
+  if (bounds.width !== note.width || bounds.height !== note.height) {
+    win.setSize(Math.max(120, note.width), Math.max(120, note.height))
   }
 }
 

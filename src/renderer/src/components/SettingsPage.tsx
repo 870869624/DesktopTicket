@@ -9,10 +9,12 @@ const emptyNote = (): StickyNote => ({
   title: '新便签',
   content: '',
   color: '#FFEB3B',
+  textColor: '#333333',
+  titleColor: '#333333',
   fontFamily: 'Microsoft YaHei',
   fontSize: 14,
-  x: 100 + Math.round(Math.random() * 200),
-  y: 100 + Math.round(Math.random() * 200),
+  x: 100 + Math.round(Math.random() * 300),
+  y: 100 + Math.round(Math.random() * 300),
   width: 200,
   height: 200,
   opacity: 1,
@@ -33,8 +35,12 @@ const SettingsPage: React.FC = () => {
   }, [activeId])
 
   const loadNotes = useCallback(async () => {
-    const data = await window.electronAPI.getNotes()
-    setNotes(data)
+    try {
+      const data = await window.electronAPI.getNotes()
+      setNotes(data)
+    } catch (err) {
+      console.error('加载便签列表失败:', err)
+    }
   }, [])
 
   useEffect(() => {
@@ -44,7 +50,7 @@ const SettingsPage: React.FC = () => {
       setActiveId(id)
       window.electronAPI.getNote(id).then(note => {
         if (note) setDraft(note)
-      })
+      }).catch(err => console.error('获取便签失败:', err))
     }
 
     const handleDeleted = (id: string) => {
@@ -91,27 +97,39 @@ const SettingsPage: React.FC = () => {
 
   const handleSave = async () => {
     if (!draft) return
-    const saved = await window.electronAPI.saveNote(draft)
-    await loadNotes()
-    setActiveId(saved.id)
-    setDraft(saved)
+    try {
+      const saved = await window.electronAPI.saveNote(draft)
+      await loadNotes()
+      setActiveId(saved.id)
+      setDraft(saved)
+    } catch (err) {
+      console.error('保存便签失败:', err)
+    }
   }
 
   const handleShow = async () => {
     if (!draft) return
-    const saved = await window.electronAPI.saveNote(draft)
-    await loadNotes()
-    setActiveId(saved.id)
-    setDraft(saved)
-    await window.electronAPI.showNoteOnDesktop(saved)
+    try {
+      const saved = await window.electronAPI.saveNote(draft)
+      await loadNotes()
+      setActiveId(saved.id)
+      setDraft(saved)
+      await window.electronAPI.showNoteOnDesktop(saved)
+    } catch (err) {
+      console.error('显示便签失败:', err)
+    }
   }
 
   const handleDelete = async () => {
     if (!activeId) return
-    await window.electronAPI.deleteNote(activeId)
-    await loadNotes()
-    setActiveId(null)
-    setDraft(null)
+    try {
+      await window.electronAPI.deleteNote(activeId)
+      await loadNotes()
+      setActiveId(null)
+      setDraft(null)
+    } catch (err) {
+      console.error('删除便签失败:', err)
+    }
   }
 
   return (

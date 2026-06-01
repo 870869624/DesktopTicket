@@ -1,4 +1,4 @@
-# 桌面便签 (DesktopTicket) v1.0.1
+# 桌面便签 (DesktopTicket) v1.0.3
 
 跨平台桌面便利贴应用，支持 Windows、macOS 和 Linux。
 

@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react'
 import { StickyNote, NoteElectronAPI } from '../types'
 import styles from '../styles/note.module.css'
 
-declare const window: Window & { electronAPI: NoteElectronAPI }
+const api = window.electronAPI as NoteElectronAPI
 
 const DesktopNote: React.FC = () => {
   const [note, setNote] = useState<StickyNote | null>(null)
 
   useEffect(() => {
-    const cleanup = window.electronAPI.onNoteData((data: StickyNote) => {
+    const cleanup = api.onNoteData((data: StickyNote) => {
       setNote(data)
     })
     return cleanup
@@ -18,7 +18,7 @@ const DesktopNote: React.FC = () => {
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
-    window.electronAPI.showNoteContextMenu(note.id)
+    api.showNoteContextMenu(note.id)
   }
 
   return (
@@ -33,11 +33,26 @@ const DesktopNote: React.FC = () => {
       onContextMenu={handleContextMenu}
     >
       <div className={styles.titleBar}>
-        <div className={styles.title} style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+        <div
+          className={styles.title}
+          style={{
+            WebkitAppRegion: 'no-drag',
+            color: note.titleColor
+          } as React.CSSProperties}
+        >
           {note.title}
         </div>
+        {note.isFixed && (
+          <span className={styles.lockIcon} title="已锁定位置">&#128274;</span>
+        )}
       </div>
-      <div className={styles.content} style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+      <div
+        className={styles.content}
+        style={{
+          WebkitAppRegion: 'no-drag',
+          color: note.textColor
+        } as React.CSSProperties}
+      >
         {note.content}
       </div>
     </div>
