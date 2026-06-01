@@ -129,6 +129,17 @@ const NoteEditor: React.FC<Props> = ({ note, onChange }) => {
         />
         <label className={styles.checkboxLabel} htmlFor="isFixed">固定位置（不可拖动）</label>
       </div>
+
+      <div className={styles.checkboxRow}>
+        <input
+          className={styles.checkbox}
+          type="checkbox"
+          id="isPinned"
+          checked={note.isPinned}
+          onChange={e => update({ isPinned: e.target.checked })}
+        />
+        <label className={styles.checkboxLabel} htmlFor="isPinned">置顶显示</label>
+      </div>
     </div>
   )
 }

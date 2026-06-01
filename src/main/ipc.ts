@@ -1,6 +1,7 @@
-import { ipcMain, BrowserWindow, Menu } from 'electron'
+import { ipcMain, BrowserWindow, Menu, screen } from 'electron'
 import { join } from 'path'
-import { getNotes, getNote, saveNote, deleteNote, StickyNote } from './store'
+import { getNotes, getNote, saveNote, deleteNote } from './store'
+import type { StickyNote } from '../types'
 
 const noteWindows = new Map<string, BrowserWindow>()
 
@@ -27,8 +28,11 @@ export function setupIPC(getMainWindow: () => BrowserWindow | null) {
   })
 
   ipcMain.handle('show-note-on-desktop', (_, note: StickyNote) => {
-    closeNoteWindow(note.id)
-    createNoteWindow(note, getMainWindow)
+    if (noteWindows.has(note.id)) {
+      updateNoteWindow(noteWindows.get(note.id)!, note)
+    } else {
+      createNoteWindow(note, getMainWindow)
+    }
   })
 
   ipcMain.handle('hide-note-from-desktop', (_, id: string) => {
@@ -39,9 +43,12 @@ export function setupIPC(getMainWindow: () => BrowserWindow | null) {
     if (noteWindows.has(id)) {
       noteWindows.get(id)!.setOpacity(opacity)
     }
+    saveNote({ id, opacity })
   })
 
   ipcMain.handle('show-note-context-menu', (_, noteId: string) => {
+    const note = getNote(noteId)
+    const noteWin = noteWindows.get(noteId)
     const template: Electron.MenuItemConstructorOptions[] = [
       {
         label: '编辑',
@@ -50,6 +57,16 @@ export function setupIPC(getMainWindow: () => BrowserWindow | null) {
           if (win) {
             win.webContents.send('edit-note', noteId)
             win.show()
+          }
+        }
+      },
+      {
+        label: note?.isPinned ? '取消置顶' : '置顶',
+        click: () => {
+          const updated = saveNote({ id: noteId, isPinned: !note?.isPinned })
+          if (noteWindows.has(noteId)) {
+            noteWindows.get(noteId)!.setAlwaysOnTop(updated.isPinned)
+            noteWindows.get(noteId)!.webContents.send('note-data', updated)
           }
         }
       },
@@ -66,6 +83,12 @@ export function setupIPC(getMainWindow: () => BrowserWindow | null) {
       },
       { type: 'separator' },
       {
+        label: '隐藏',
+        click: () => {
+          closeNoteWindow(noteId)
+        }
+      },
+      {
         label: '删除',
         click: () => {
           deleteNote(noteId)
@@ -78,7 +101,7 @@ export function setupIPC(getMainWindow: () => BrowserWindow | null) {
       }
     ]
     const menu = Menu.buildFromTemplate(template)
-    menu.popup()
+    menu.popup(noteWin ? { window: noteWin } : undefined)
   })
 
   ipcMain.handle('show-all-notes', () => {
@@ -106,15 +129,22 @@ function closeNoteWindow(id: string) {
 
 function createNoteWindow(note: StickyNote, getMainWindow: () => BrowserWindow | null) {
   const { x, y, width, height } = note
+  const displays = screen.getAllDisplays()
+  const isVisible = displays.some(d => {
+    const { x: dx, y: dy, width: dw, height: dh } = d.bounds
+    return x >= dx && y >= dy && x < dx + dw && y < dy + dh
+  })
+  const posX = isVisible ? x : 100
+  const posY = isVisible ? y : 100
 
   const noteWindow = new BrowserWindow({
-    x,
-    y,
+    x: posX,
+    y: posY,
     width,
     height,
     frame: false,
     transparent: true,
-    alwaysOnTop: true,
+    alwaysOnTop: note.isPinned !== false,
     resizable: !note.isFixed,
     skipTaskbar: true,
     webPreferences: {
@@ -161,11 +191,15 @@ function createNoteWindow(note: StickyNote, getMainWindow: () => BrowserWindow |
 function updateNoteWindow(win: BrowserWindow, note: StickyNote) {
   win.webContents.send('note-data', note)
   win.setOpacity(note.opacity)
+  win.setAlwaysOnTop(note.isPinned !== false)
+  if (!note.isFixed) {
+    win.setResizable(true)
+  }
 }
 
 function setNoteOpacity(id: string, opacity: number) {
   if (noteWindows.has(id)) {
     noteWindows.get(id)!.setOpacity(opacity)
-    saveNote({ id, opacity })
   }
+  saveNote({ id, opacity })
 }

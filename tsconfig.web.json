@@ -11,5 +11,5 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["src/renderer/src/**/*.ts", "src/renderer/src/**/*.tsx"]
+  "include": ["src/types.ts", "src/renderer/src/**/*.ts", "src/renderer/src/**/*.tsx"]
 }

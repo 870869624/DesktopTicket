@@ -11,12 +11,13 @@ const emptyNote = (): StickyNote => ({
   color: '#FFEB3B',
   fontFamily: 'Microsoft YaHei',
   fontSize: 14,
-  x: 100,
-  y: 100,
+  x: 100 + Math.round(Math.random() * 200),
+  y: 100 + Math.round(Math.random() * 200),
   width: 200,
   height: 200,
   opacity: 1,
   isFixed: false,
+  isPinned: true,
   createdAt: '',
   updatedAt: ''
 })
@@ -58,14 +59,14 @@ const SettingsPage: React.FC = () => {
       setNotes(prev => prev.map(n => n.id === note.id ? note : n))
     }
 
-    window.electronAPI.onEditNote(handleEdit)
-    window.electronAPI.onNoteDeleted(handleDeleted)
-    window.electronAPI.onNoteUpdated(handleUpdated)
+    const offEdit = window.electronAPI.onEditNote(handleEdit)
+    const offDeleted = window.electronAPI.onNoteDeleted(handleDeleted)
+    const offUpdated = window.electronAPI.onNoteUpdated(handleUpdated)
 
     return () => {
-      window.electronAPI.removeAllListeners('edit-note')
-      window.electronAPI.removeAllListeners('note-deleted')
-      window.electronAPI.removeAllListeners('note-updated')
+      offEdit()
+      offDeleted()
+      offUpdated()
     }
   }, [loadNotes])
 
@@ -74,7 +75,7 @@ const SettingsPage: React.FC = () => {
       const note = notes.find(n => n.id === activeId)
       if (note) setDraft(note)
     }
-  }, [activeId])
+  }, [activeId, notes])
 
   const handleAdd = () => {
     const newNote = emptyNote()

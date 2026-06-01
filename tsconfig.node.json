@@ -12,6 +12,7 @@
     "skipLibCheck": true
   },
   "include": [
+    "src/types.ts",
     "src/main/**/*.ts",
     "src/preload/**/*.ts",
     "electron.vite.config.ts"

@@ -27,6 +27,7 @@ const ColorPicker: React.FC<Props> = ({ color, onChange }) => {
               borderRadius: 4,
               background: c,
               border: c === color ? '2px solid #333' : '1px solid #ddd',
+              boxShadow: c === color ? '0 0 0 2px #4a90d9' : 'none',
               cursor: 'pointer'
             }}
           />

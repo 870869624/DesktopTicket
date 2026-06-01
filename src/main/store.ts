@@ -1,22 +1,8 @@
 import Store from 'electron-store'
 import { v4 as uuidv4 } from 'uuid'
+import type { StickyNote } from '../types'
 
-export interface StickyNote {
-  id: string
-  title: string
-  content: string
-  color: string
-  fontFamily: string
-  fontSize: number
-  x: number
-  y: number
-  width: number
-  height: number
-  opacity: number
-  isFixed: boolean
-  createdAt: string
-  updatedAt: string
-}
+export type { StickyNote }
 
 interface StoreData {
   notes: StickyNote[]
@@ -64,6 +50,7 @@ export function saveNote(note: Partial<StickyNote> & { id?: string }): StickyNot
     height: note.height ?? 200,
     opacity: note.opacity ?? 1,
     isFixed: note.isFixed ?? false,
+    isPinned: note.isPinned ?? true,
     createdAt: now,
     updatedAt: now
   }

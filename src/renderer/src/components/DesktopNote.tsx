@@ -32,8 +32,10 @@ const DesktopNote: React.FC = () => {
       } as React.CSSProperties}
       onContextMenu={handleContextMenu}
     >
-      <div className={styles.title} style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-        {note.title}
+      <div className={styles.titleBar}>
+        <div className={styles.title} style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+          {note.title}
+        </div>
       </div>
       <div className={styles.content} style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         {note.content}
