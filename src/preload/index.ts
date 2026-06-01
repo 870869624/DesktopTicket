@@ -16,5 +16,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onNoteDeleted: (callback: (id: string) => void) => {
     ipcRenderer.on('note-deleted', (_, id) => callback(id))
+  },
+  onNoteUpdated: (callback: (note: any) => void) => {
+    ipcRenderer.on('note-updated', (_, note) => callback(note))
+  },
+  removeAllListeners: (channel: string) => {
+    ipcRenderer.removeAllListeners(channel)
   }
 })

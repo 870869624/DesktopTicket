@@ -1,41 +1,43 @@
 import React, { useState, useEffect } from 'react'
-import { StickyNote } from '../types'
+import { StickyNote, NoteElectronAPI } from '../types'
 import styles from '../styles/note.module.css'
+
+declare const window: Window & { electronAPI: NoteElectronAPI }
 
 const DesktopNote: React.FC = () => {
   const [note, setNote] = useState<StickyNote | null>(null)
 
   useEffect(() => {
-    const api = (window as any).electronAPI
-    if (api?.onNoteData) {
-      api.onNoteData((data: StickyNote) => {
-        setNote(data)
-      })
-    }
+    const cleanup = window.electronAPI.onNoteData((data: StickyNote) => {
+      setNote(data)
+    })
+    return cleanup
   }, [])
 
   if (!note) return null
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
-    const api = (window as any).electronAPI
-    if (api?.showNoteContextMenu) {
-      api.showNoteContextMenu(note.id)
-    }
+    window.electronAPI.showNoteContextMenu(note.id)
   }
 
   return (
     <div
-      className={`${styles.note} ${!note.isFixed ? styles.noteDraggable : ''}`}
+      className={styles.note}
       style={{
         background: note.color,
         fontFamily: note.fontFamily,
-        fontSize: note.fontSize
-      }}
+        fontSize: note.fontSize,
+        WebkitAppRegion: note.isFixed ? 'no-drag' : 'drag'
+      } as React.CSSProperties}
       onContextMenu={handleContextMenu}
     >
-      <div className={styles.title}>{note.title}</div>
-      <div className={styles.content}>{note.content}</div>
+      <div className={styles.title} style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+        {note.title}
+      </div>
+      <div className={styles.content} style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+        {note.content}
+      </div>
     </div>
   )
 }

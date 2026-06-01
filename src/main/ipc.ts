@@ -1,10 +1,10 @@
-import { ipcMain, BrowserWindow, screen, Menu, nativeTheme } from 'electron'
+import { ipcMain, BrowserWindow, Menu } from 'electron'
 import { join } from 'path'
 import { getNotes, getNote, saveNote, deleteNote, StickyNote } from './store'
 
 const noteWindows = new Map<string, BrowserWindow>()
 
-export function setupIPC(mainWindow: BrowserWindow) {
+export function setupIPC(getMainWindow: () => BrowserWindow | null) {
   ipcMain.handle('get-notes', () => {
     return getNotes()
   })
@@ -22,25 +22,17 @@ export function setupIPC(mainWindow: BrowserWindow) {
   })
 
   ipcMain.handle('delete-note', (_, id: string) => {
-    if (noteWindows.has(id)) {
-      noteWindows.get(id)!.close()
-      noteWindows.delete(id)
-    }
+    closeNoteWindow(id)
     return deleteNote(id)
   })
 
   ipcMain.handle('show-note-on-desktop', (_, note: StickyNote) => {
-    if (noteWindows.has(note.id)) {
-      noteWindows.get(note.id)!.close()
-    }
-    createNoteWindow(note)
+    closeNoteWindow(note.id)
+    createNoteWindow(note, getMainWindow)
   })
 
   ipcMain.handle('hide-note-from-desktop', (_, id: string) => {
-    if (noteWindows.has(id)) {
-      noteWindows.get(id)!.close()
-      noteWindows.delete(id)
-    }
+    closeNoteWindow(id)
   })
 
   ipcMain.handle('update-note-opacity', (_, id: string, opacity: number) => {
@@ -54,8 +46,11 @@ export function setupIPC(mainWindow: BrowserWindow) {
       {
         label: '编辑',
         click: () => {
-          mainWindow.webContents.send('edit-note', noteId)
-          mainWindow.show()
+          const win = getMainWindow()
+          if (win) {
+            win.webContents.send('edit-note', noteId)
+            win.show()
+          }
         }
       },
       { type: 'separator' },
@@ -74,11 +69,11 @@ export function setupIPC(mainWindow: BrowserWindow) {
         label: '删除',
         click: () => {
           deleteNote(noteId)
-          if (noteWindows.has(noteId)) {
-            noteWindows.get(noteId)!.close()
-            noteWindows.delete(noteId)
+          closeNoteWindow(noteId)
+          const win = getMainWindow()
+          if (win) {
+            win.webContents.send('note-deleted', noteId)
           }
-          mainWindow.webContents.send('note-deleted', noteId)
         }
       }
     ]
@@ -90,7 +85,7 @@ export function setupIPC(mainWindow: BrowserWindow) {
     const notes = getNotes()
     notes.forEach(note => {
       if (!noteWindows.has(note.id)) {
-        createNoteWindow(note)
+        createNoteWindow(note, getMainWindow)
       }
     })
   })
@@ -101,7 +96,15 @@ export function setupIPC(mainWindow: BrowserWindow) {
   })
 }
 
-function createNoteWindow(note: StickyNote) {
+function closeNoteWindow(id: string) {
+  if (noteWindows.has(id)) {
+    const win = noteWindows.get(id)!
+    noteWindows.delete(id)
+    win.destroy()
+  }
+}
+
+function createNoteWindow(note: StickyNote, getMainWindow: () => BrowserWindow | null) {
   const { x, y, width, height } = note
 
   const noteWindow = new BrowserWindow({
@@ -112,7 +115,7 @@ function createNoteWindow(note: StickyNote) {
     frame: false,
     transparent: true,
     alwaysOnTop: true,
-    resizable: true,
+    resizable: !note.isFixed,
     skipTaskbar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/note.js'),
@@ -135,13 +138,22 @@ function createNoteWindow(note: StickyNote) {
   if (!note.isFixed) {
     noteWindow.on('moved', () => {
       const bounds = noteWindow.getBounds()
-      saveNote({ id: note.id, x: bounds.x, y: bounds.y })
+      const saved = saveNote({ id: note.id, x: bounds.x, y: bounds.y })
+      const win = getMainWindow()
+      if (win) {
+        win.webContents.send('note-updated', saved)
+      }
+    })
+
+    noteWindow.on('resized', () => {
+      const bounds = noteWindow.getBounds()
+      const saved = saveNote({ id: note.id, width: bounds.width, height: bounds.height })
+      const win = getMainWindow()
+      if (win) {
+        win.webContents.send('note-updated', saved)
+      }
     })
   }
-
-  noteWindow.on('closed', () => {
-    noteWindows.delete(note.id)
-  })
 
   noteWindows.set(note.id, noteWindow)
 }

@@ -9,14 +9,7 @@
   cursor: default;
   user-select: none;
   overflow: hidden;
-}
-
-.noteDraggable {
-  cursor: grab;
-}
-
-.noteDraggable:active {
-  cursor: grabbing;
+  background: transparent;
 }
 
 .title {

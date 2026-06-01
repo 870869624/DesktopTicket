@@ -31,7 +31,7 @@ function createMainWindow() {
 
 app.whenReady().then(() => {
   createMainWindow()
-  setupIPC(mainWindow!)
+  setupIPC(() => mainWindow)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

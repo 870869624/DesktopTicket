@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { StickyNote } from '../types'
 import NoteList from './NoteList'
 import NoteEditor from './NoteEditor'
@@ -25,6 +25,11 @@ const SettingsPage: React.FC = () => {
   const [notes, setNotes] = useState<StickyNote[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [draft, setDraft] = useState<StickyNote | null>(null)
+  const activeIdRef = useRef(activeId)
+
+  useEffect(() => {
+    activeIdRef.current = activeId
+  }, [activeId])
 
   const loadNotes = useCallback(async () => {
     const data = await window.electronAPI.getNotes()
@@ -33,20 +38,36 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     loadNotes()
-    window.electronAPI.onEditNote((id: string) => {
+
+    const handleEdit = (id: string) => {
       setActiveId(id)
       window.electronAPI.getNote(id).then(note => {
         if (note) setDraft(note)
       })
-    })
-    window.electronAPI.onNoteDeleted((id: string) => {
+    }
+
+    const handleDeleted = (id: string) => {
       setNotes(prev => prev.filter(n => n.id !== id))
-      if (activeId === id) {
+      if (activeIdRef.current === id) {
         setActiveId(null)
         setDraft(null)
       }
-    })
-  }, [])
+    }
+
+    const handleUpdated = (note: StickyNote) => {
+      setNotes(prev => prev.map(n => n.id === note.id ? note : n))
+    }
+
+    window.electronAPI.onEditNote(handleEdit)
+    window.electronAPI.onNoteDeleted(handleDeleted)
+    window.electronAPI.onNoteUpdated(handleUpdated)
+
+    return () => {
+      window.electronAPI.removeAllListeners('edit-note')
+      window.electronAPI.removeAllListeners('note-deleted')
+      window.electronAPI.removeAllListeners('note-updated')
+    }
+  }, [loadNotes])
 
   useEffect(() => {
     if (activeId) {

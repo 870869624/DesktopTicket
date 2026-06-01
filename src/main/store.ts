@@ -44,7 +44,8 @@ export function saveNote(note: Partial<StickyNote> & { id?: string }): StickyNot
   if (note.id) {
     const index = notes.findIndex(n => n.id === note.id)
     if (index !== -1) {
-      notes[index] = { ...notes[index], ...note, updatedAt: now }
+      const { createdAt, ...rest } = note
+      notes[index] = { ...notes[index], ...rest, updatedAt: now }
       store.set('notes', notes)
       return notes[index]
     }
@@ -52,15 +53,15 @@ export function saveNote(note: Partial<StickyNote> & { id?: string }): StickyNot
 
   const newNote: StickyNote = {
     id: uuidv4(),
-    title: note.title || '新便签',
-    content: note.content || '',
-    color: note.color || '#FFEB3B',
-    fontFamily: note.fontFamily || 'Microsoft YaHei',
-    fontSize: note.fontSize || 14,
-    x: note.x || 100,
-    y: note.y || 100,
-    width: note.width || 200,
-    height: note.height || 200,
+    title: note.title ?? '新便签',
+    content: note.content ?? '',
+    color: note.color ?? '#FFEB3B',
+    fontFamily: note.fontFamily ?? 'Microsoft YaHei',
+    fontSize: note.fontSize ?? 14,
+    x: note.x ?? 100,
+    y: note.y ?? 100,
+    width: note.width ?? 200,
+    height: note.height ?? 200,
     opacity: note.opacity ?? 1,
     isFixed: note.isFixed ?? false,
     createdAt: now,

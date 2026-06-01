@@ -28,6 +28,13 @@ export interface ElectronAPI {
   hideAllNotes: () => Promise<void>
   onEditNote: (callback: (id: string) => void) => void
   onNoteDeleted: (callback: (id: string) => void) => void
+  onNoteUpdated: (callback: (note: StickyNote) => void) => void
+  removeAllListeners: (channel: string) => void
+}
+
+export interface NoteElectronAPI {
+  onNoteData: (callback: (data: StickyNote) => void) => () => void
+  showNoteContextMenu: (id: string) => Promise<void>
 }
 
 declare global {
